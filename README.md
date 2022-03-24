@@ -14,4 +14,7 @@
 9. Movie_list (id, user_id, list_name) - подборка фильмов, которую может создать пользователь
 10. Movie_to_list (list_id, movie_id) - отношение many-to-many между подборкой фильмов и фильмом
 
+# Схема базы данных
+
+![schema](./bd_schema.png)
 
