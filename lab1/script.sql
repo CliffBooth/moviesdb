@@ -4,7 +4,7 @@ CREATE SCHEMA public;
 CREATE TABLE IF NOT EXISTS movies (
 	id serial NOT NULL PRIMARY KEY,
     title varchar(50) NOT NULL,
-    rating real CHECK (rating BETWEEN 1 AND 10),
+    rating real NOT NULL CHECK (rating BETWEEN 0 AND 10) DEFAULT 0,
     date_released date NOT NULL
 );
 
@@ -73,11 +73,11 @@ CREATE TABLE IF NOT EXISTS movie_to_list (
 
 --insert:
 
-insert into movies(title, rating, date_released)
+insert into movies(title, date_released)
 values
-    ('movie1',NULL,'2004.2.29'),
-    ('movie2',NULL,'2004.2.29'),
-    ('movie3',NULL,'2004.2.29');
+    ('movie1','2004.2.29'),
+    ('movie2','2004.2.29'),
+    ('movie3','2004.2.29');
 
 insert into personalities(name, date_of_birth, age)
 values
