@@ -12,7 +12,7 @@ const val firstNameFile = "names.txt"
 const val secondNameFile = "secondNames.txt"
 const val titlesFile = "movie_titles.txt"
 
-const val entriesNumber = 1000
+const val entriesNumber = 5000
 
 val firstNames = HashSet<String>().apply {
     User::class.java.getResourceAsStream(firstNameFile)!!.bufferedReader().useLines { addAll(it) }
@@ -31,6 +31,7 @@ fun main() {
     getUsers(entriesNumber).forEach {
         statement.execute("INSERT INTO users(email, username) VALUES('${it.email}','${it.userName}')")
     }
+    println("users")
 
     getPersonalities(entriesNumber).forEach {
         val q = """
@@ -39,44 +40,53 @@ fun main() {
         """.trimIndent()
         statement.execute(q)
     }
+    println("personalities")
 
     getMovies(entriesNumber).forEach {
         statement.execute("INSERT INTO movies(title, date_released) VALUES('${it.title}','${it.dateReleased}')")
     }
+    println("movies")
 
     getPersonalityToMovie(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO screenwriter_to_movie(personality_id, movie_id) " +
                 "VALUES('${it.personalityId}','${it.movieId}')")
     }
+    println("screenwriter")
 
     getPersonalityToMovie(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO director_to_movie(personality_id, movie_id) " +
                 "VALUES('${it.personalityId}','${it.movieId}')")
     }
+    println("director")
 
     getPersonalityToMovie(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO actor_to_movie(personality_id, movie_id) " +
                 "VALUES('${it.personalityId}','${it.movieId}')")
     }
+    println("actor")
 
     getRating(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO rating(user_id, movie_id, rating) " +
                 "VALUES('${it.userId}','${it.movieId}','${it.rating}')")
     }
+    println("rating")
 
     getReviews(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO review(user_id, movie_id, review) " +
                 "VALUES('${it.userId}','${it.movieId}','${it.review}')")
     }
+    println("review")
 
     getMovieLists(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO movie_list(user_id, list_name) VALUES('${it.userId}','${it.name}')")
     }
+    println("movieList")
 
     getMovieToLists(statement, entriesNumber).forEach {
         statement.execute("INSERT INTO movie_to_list(movie_id, list_id) " +
                 "VALUES('${it.movieId}','${it.listId}')")
     }
+    println("movie to list")
 }
 
 fun getUsers(number: Int) = HashSet<User>().apply {
