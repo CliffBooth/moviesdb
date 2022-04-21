@@ -1,102 +1,236 @@
-import java.io.BufferedReader
-import java.io.FileReader
-import java.io.FileWriter
-import java.sql.Date
 import java.sql.DriverManager
+import java.sql.Statement
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import kotlin.random.Random
 
-fun main_() {
-    val fileName = "secondNames.txt"
-    var set = mutableSetOf<String>()
-    val fileReader = BufferedReader(FileReader(fileName))
-    set.addAll(fileReader.readLines())
+const val jdbcUrl = "jdbc:postgresql://localhost:5432/movies_db"
+const val userName = "postgres"
+const val password = "1"
 
-    fileReader.close()
-    val fileWriter = FileWriter(fileName)
-    set = HashSet(set.map { it.lowercase().capitalize() })
-    set.forEach { fileWriter.write("$it\n") }
-    fileWriter.close()
-}
+const val firstNameFile = "names.txt"
+const val secondNameFile = "secondNames.txt"
+const val titlesFile = "movie_titles.txt"
 
-val firstNameFile = "names.txt"
-val secondNameFile = "secondNames.txt"
-val emailsFile = "emails.txt"
+const val entriesNumber = 1000
 
 val firstNames = HashSet<String>().apply {
-    val reader = BufferedReader(FileReader(firstNameFile))
-    addAll(reader.readLines())
-    reader.close()
+    User::class.java.getResourceAsStream(firstNameFile)!!.bufferedReader().useLines { addAll(it) }
 }
 
 val secondNames = HashSet<String>().apply {
-    val reader = BufferedReader(FileReader(secondNameFile))
-    addAll(reader.readLines())
-    reader.close()
+    User::class.java.getResourceAsStream(secondNameFile)!!.bufferedReader().useLines { addAll(it) }
 }
 
-val emails = HashSet<String>().apply {
-    val reader = BufferedReader(FileReader(emailsFile))
-    addAll(reader.readLines())
-    reader.close()
+fun main() {
+    val c = DriverManager.getConnection(jdbcUrl, userName, password)
+    val statement = c.createStatement()
+
+    clearTable(statement)
+
+    getUsers(entriesNumber).forEach {
+        statement.execute("INSERT INTO users(email, username) VALUES('${it.email}','${it.userName}')")
+    }
+
+    getPersonalities(entriesNumber).forEach {
+        val q = """
+            INSERT INTO personalities(name, date_of_birth, age)
+            VALUES('${it.name}','${it.dateOfBirth}','${it.age}')
+        """.trimIndent()
+        statement.execute(q)
+    }
+
+    getMovies(entriesNumber).forEach {
+        statement.execute("INSERT INTO movies(title, date_released) VALUES('${it.title}','${it.dateReleased}')")
+    }
+
+    getPersonalityToMovie(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO screenwriter_to_movie(personality_id, movie_id) " +
+                "VALUES('${it.personalityId}','${it.movieId}')")
+    }
+
+    getPersonalityToMovie(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO director_to_movie(personality_id, movie_id) " +
+                "VALUES('${it.personalityId}','${it.movieId}')")
+    }
+
+    getPersonalityToMovie(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO actor_to_movie(personality_id, movie_id) " +
+                "VALUES('${it.personalityId}','${it.movieId}')")
+    }
+
+    getRating(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO rating(user_id, movie_id, rating) " +
+                "VALUES('${it.userId}','${it.movieId}','${it.rating}')")
+    }
+
+    getReviews(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO review(user_id, movie_id, review) " +
+                "VALUES('${it.userId}','${it.movieId}','${it.review}')")
+    }
+
+    getMovieLists(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO movie_list(user_id, list_name) VALUES('${it.userId}','${it.name}')")
+    }
+
+    getMovieToLists(statement, entriesNumber).forEach {
+        statement.execute("INSERT INTO movie_to_list(movie_id, list_id) " +
+                "VALUES('${it.movieId}','${it.listId}')")
+    }
 }
 
-fun getUsers(number: Int): Set<User> = HashSet<User>().apply {
+fun getUsers(number: Int) = HashSet<User>().apply {
+    var emailCounter: Long = 1
     repeat(number) {
-        val email = emails.random()
-        emails.remove(email)
+        val email = "email${emailCounter++}@mail.com"
         add(User(email = email, userName = firstNames.random()))
     }
 }
 
-fun main() {
-    val jdbcUrl = "jdbc:postgresql://localhost:5432/movies_db"
-    val userName = "postgres"
-    val password = "1"
-    val c = DriverManager.getConnection(jdbcUrl, userName, password)
-    val statement = c.createStatement()
-
-    val users = getUsers(5)
-    for (user in users) {
-        val email = user.email
-        val username = user.userName
-        val q = "INSERT INTO users(email, username) VALUES('$email','$username')"
-        statement.execute(q)
+fun getPersonalities(number: Int) = HashSet<Personality>().apply {
+    repeat(number) {
+        val name = "${firstNames.random()} ${secondNames.random()}"
+        val dayOffset = (0..ChronoUnit.DAYS.between(
+            LocalDate.of(1940, 1, 1),
+            LocalDate.of(2004, 1, 1)
+        )).random()
+        val date = LocalDate.of(1940, 1, 1).plusDays(dayOffset)
+        val age = ChronoUnit.YEARS.between(date, LocalDate.now()).toInt()
+        add(Personality(name = name, dateOfBirth = date.toString(), age = age))
     }
-
-    val query = "SELECT * FROM users"
-    val result = statement.executeQuery(query)
-    val userSet = mutableSetOf<User>()
-    while (result.next()) {
-        val id = result.getInt("id")
-        val email = result.getString("email")
-        val name = result.getString("username")
-        userSet += User(id, email, name)
-    }
-    userSet.forEach { println(it) }
 }
 
-data class Customer(
-    val id: Int,
-    val first_name: String,
-    val last_name: String,
-    val email: String,
-)
+fun getMovies(number: Int) = HashSet<Movie>().apply {
+    val titles = HashSet<String>().apply {
+        User::class.java.getResourceAsStream(titlesFile)!!.bufferedReader().useLines { addAll(it) }
+    }
+    repeat(number) {
+        val dayOffset = (0..ChronoUnit.DAYS.between(
+            LocalDate.of(1940, 1, 1),
+            LocalDate.of(2022, 4, 21)
+        )).random()
+        val date = LocalDate.of(1940, 1, 1).plusDays(dayOffset)
+        val title = titles.random().replace("'", "''")
+        add(Movie(title = title, dateReleased = date.toString()))
+    }
+}
 
-data class Personality(
-    val id: Int,
-    val name: String,
-    val dateOfBirth: Date,
-    val age: Int
-)
+private fun getIds(statement: Statement, table: String) = HashSet<Int>().apply {
+    val rs = statement.executeQuery("SELECT id FROM $table")
+    while (rs.next()) {
+        add(rs.getInt("id"))
+    }
+}
 
-data class Movie(
-    val id: Int,
-    val title: String,
-    val rating: Double,
-    val dateReleased: Date
-)
+private fun getRandomString(maxLength: Int): String {
+    val charPool = "q,w,e,r,t,y,u,i,o,p,a,s,d,f,g,h,j,k,l,z,x,c,v,b,n,m, ".split(",")
+    val length = (1..maxLength).random()
+    return (0..length)
+        .map { Random.nextInt(0, charPool.size) }.joinToString("", transform = charPool::get)
+}
 
-data class User(
-    var id: Int = -1,
-    val email: String,
-    val userName: String
-)
+
+fun getPersonalityToMovie(statement: Statement, number: Int): Set<PersonalityToMovie> {
+    val personalityIds = getIds(statement, "personalities")
+    val movieIds = getIds(statement, "movies")
+    val inserted = mutableSetOf<PersonalityToMovie>()
+    repeat(number) {
+        var ptm: PersonalityToMovie?
+        do {
+            ptm = PersonalityToMovie(personalityIds.random(), movieIds.random())
+        } while (inserted.contains(ptm))
+        inserted.add(ptm!!)
+    }
+    return inserted
+}
+
+fun getRating(statement: Statement, number: Int): Set<Rating> {
+    val movieIds = getIds(statement, "movies")
+    val userIds = getIds(statement, "users")
+    val inserted = mutableSetOf<Pair<Int, Int>>()
+    val result = mutableSetOf<Rating>()
+    repeat(number) {
+        var userId: Int?
+        var movieId: Int?
+        do {
+            userId = userIds.random()
+            movieId = movieIds.random()
+        } while (inserted.contains(Pair(userId!!, movieId!!)))
+        inserted.add(Pair(userId, movieId))
+        result.add(Rating(userId, movieId, (1..10).random()))
+    }
+    return result
+}
+
+fun getReviews(statement: Statement, number: Int): Set<Review> {
+    val movieIds = getIds(statement, "movies")
+    val userIds = getIds(statement, "users")
+    val result = mutableSetOf<Review>()
+    val inserted = mutableSetOf<Pair<Int, Int>>()
+    repeat(number) {
+        var userId: Int?
+        var movieId: Int?
+        do {
+            userId = userIds.random()
+            movieId = movieIds.random()
+        } while (inserted.contains(Pair(userId!!, movieId!!)))
+        inserted.add(Pair(userId, movieId))
+        val review = getRandomString(200)
+        result.add(Review(userId, movieId, review))
+    }
+    return result
+}
+
+fun getMovieLists(statement: Statement, number: Int) = HashSet<MovieList>().apply {
+    val userIds = getIds(statement, "users")
+    repeat(number) {
+        add(MovieList(userIds.random(), getRandomString(15)))
+    }
+}
+
+fun getMovieToLists(statement: Statement, number: Int): Set<MovieToList> {
+    val movieIds = getIds(statement, "movies")
+    val listIds = getIds(statement, "movie_list")
+    val inserted = mutableSetOf<MovieToList>()
+    repeat(number) {
+        var mtl: MovieToList?
+        do {
+            mtl = MovieToList(movieIds.random(), listIds.random())
+        } while (inserted.contains(mtl))
+        inserted.add(mtl!!)
+    }
+    return inserted
+}
+
+
+fun clearTable(statement: Statement) {
+    val tables = listOf(
+        "personalities",
+        "screenwriter_to_movie",
+        "movies",
+        "actor_to_movie",
+        "director_to_movie",
+        "screenwriter_to_movie",
+        "users",
+        "movie_list",
+        "rating",
+        "review",
+    )
+    tables.forEach { statement.execute("DELETE FROM $it") }
+}
+
+data class Personality(val name: String, val dateOfBirth: String, val age: Int)
+
+data class Movie(val title: String, val dateReleased: String)
+
+data class User(val email: String, val userName: String)
+
+data class PersonalityToMovie(val personalityId: Int, val movieId: Int)
+
+data class Rating(val userId: Int, val movieId: Int, val rating: Int)
+
+data class Review(val userId: Int, val movieId: Int, val review: String)
+
+data class MovieList(val userId: Int, val name: String)
+
+data class MovieToList(val movieId: Int, val listId: Int)

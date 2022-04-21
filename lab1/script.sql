@@ -3,7 +3,7 @@ CREATE SCHEMA public;
 
 CREATE TABLE IF NOT EXISTS movies (
 	id serial NOT NULL PRIMARY KEY,
-    title varchar(50) NOT NULL,
+    title varchar(200) NOT NULL,
     rating real NOT NULL CHECK (rating BETWEEN 0 AND 10) DEFAULT 0,
     date_released date NOT NULL
 );
