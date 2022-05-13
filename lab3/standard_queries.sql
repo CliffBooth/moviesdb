@@ -1,5 +1,5 @@
 --1
-select * from movies;
+create or replace view titles_v as select id, title from movies
 select * from personalities;
 select * from screenwriter_to_movie;
 select * from actor_to_movie;
