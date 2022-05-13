@@ -26,19 +26,20 @@ val titles = HashSet<String>().apply {
     Adder::class.java.getResourceAsStream(titlesFile)!!.bufferedReader().useLines { addAll(it) }
 }
 
-const val entriesNumber = 10_000
+const val entriesNumber = 5_000
 
 val c: Connection = DriverManager.getConnection(jdbcUrl, userName, password)
 val statement: Statement = c.createStatement()
 
 fun main() {
+//    Adder.clearTable()
     Adder.addUsers(entriesNumber)
     println("users")
 
     Adder.addPersonalities(entriesNumber)
     println("personalities")
 
-    Adder.getMovies(entriesNumber)
+    Adder.addMovies(entriesNumber)
     println("movies")
 
     Adder.addPersonalityToMovie(entriesNumber, "director_to_movie")
@@ -100,7 +101,7 @@ object Adder {
             i++
             val email = "${getRandomString(30, false)}@mail.com"
             try {
-                statement.execute("INSERT INTO users(email, username) VALUES('${email}','${firstNames.random()}')")
+                statement.execute("INSERT INTO users(email, username) VALUES('$email','${firstNames.random()}')")
             } catch (e: PSQLException) {
                 i--
                 continue
@@ -117,11 +118,11 @@ object Adder {
             )).random()
             val date = LocalDate.of(1940, 1, 1).plusDays(dayOffset)
             val age = ChronoUnit.YEARS.between(date, LocalDate.now()).toInt()
-            statement.execute("INSERT INTO personalities(name, date_of_birth, age) VALUES('${name}','${date}','${age}')")
+            statement.execute("INSERT INTO personalities(name, date_of_birth, age) VALUES('$name','$date','$age')")
         }
-}
+    }
 
-    fun getMovies(number: Int) {
+    fun addMovies(number: Int) {
         repeat(number) {
             val dayOffset = (0..ChronoUnit.DAYS.between(
                 LocalDate.of(1940, 1, 1),
@@ -129,9 +130,10 @@ object Adder {
             )).random()
             val date = LocalDate.of(1940, 1, 1).plusDays(dayOffset)
             val title = titles.random().replace("'", "''")
-            statement.execute("INSERT INTO movies(title, date_released) VALUES('${title}','${date}')")
+            val rating = (0..10).random()
+            statement.execute("INSERT INTO movies(title, rating, date_released) VALUES('$title',$rating,'$date')")
         }
-}
+    }
 
     fun addPersonalityToMovie(number: Int, table: String) {
         val existingPairs = mutableSetOf<Pair<Int, Int>>()
@@ -142,7 +144,7 @@ object Adder {
 
         val ids = getUniqueIdPairs(existingPairs,"personalities", "movies", number)
         for ((personalityId, movieId) in ids)
-            statement.execute("INSERT INTO ${table}(personality_id, movie_id) VALUES('${personalityId}','${movieId}')")
+            statement.execute("INSERT INTO $table(personality_id, movie_id) VALUES('$personalityId','$movieId')")
     }
 
     fun addRating(number: Int) {
