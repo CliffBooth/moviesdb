@@ -199,16 +199,16 @@ object Adder {
 
     fun clearTable() {
         val tables = listOf(
+            "movies",
             "personalities",
             "screenwriter_to_movie",
-            "movies",
             "actor_to_movie",
             "director_to_movie",
-            "screenwriter_to_movie",
             "users",
             "movie_list",
             "rating",
             "review",
+            "movie_to_list"
         )
         tables.forEach { statement.execute("DELETE FROM $it") }
     }
