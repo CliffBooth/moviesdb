@@ -17,31 +17,13 @@ val c: Connection = DriverManager.getConnection(jdbcUrl, userName, password)
 val statement: Statement = c.createStatement()
 
 val moviesIds = mutableListOf<Int>()
-
 val actorIds = mutableListOf<Int>()
-
 val userIds = mutableListOf<Int>()
 
 fun main() {
     Generator.generate()
 
-    moviesIds.apply {
-        val rs = statement.executeQuery("select id from movies")
-        while (rs.next())
-            add(rs.getInt("id"))
-    }
-
-    actorIds.apply {
-        val rs = statement.executeQuery("select id from personalities")
-        while (rs.next())
-            add(rs.getInt("id"))
-    }
-
-    userIds.apply {
-        val rs = statement.executeQuery("select id from users")
-        while (rs.next())
-            add(rs.getInt("id"))
-    }
+    fillIdLists()
 
     val cacheSize = DBSize * 2
     val smallCacheSize = DBSize * 1
@@ -52,11 +34,11 @@ fun main() {
     var withoutCache = WithoutCache(jdbcUrl, userName, password)
     println("1) Primarily Select")
     println("===without cache===")
-    test(withoutCache, 100, 2, 0)
+    test(withoutCache, 100, 0, 0)
     println("\n===cache = ${smallCache.capacity}===")
-    test(smallCache, 100, 2, 0)
+    test(smallCache, 100, 0, 0)
     println("\n===cache = ${bigCache.capacity}===")
-    test(bigCache, 100, 2, 0)
+    test(bigCache, 100, 0, 0)
     println("-------------------------------")
     bigCache.close()
     smallCache.close()
@@ -68,33 +50,36 @@ fun main() {
     withoutCache = WithoutCache(jdbcUrl, userName, password)
     println("\n2) Primarily Update")
     println("===without cache===")
-    test(withoutCache, 2, 100, 0)
+    test(withoutCache, 0, 100, 0)
     println("\n===cache = ${smallCache.capacity}===")
-    test(smallCache, 2, 100, 0)
+    test(smallCache, 0, 100, 0)
     println("\n===cache = ${bigCache.capacity}===")
-    test(bigCache, 2, 100, 0)
+    test(bigCache, 0, 100, 0)
     println("-------------------------------")
     bigCache.close()
     smallCache.close()
     withoutCache.close()
 
     //primarily delete
-    iterations = DBSize
+    iterations = DBSize / 2
     bigCache = WithCache(jdbcUrl, userName, password, cacheSize)
     smallCache = WithCache(jdbcUrl, userName, password, smallCacheSize)
     withoutCache = WithoutCache(jdbcUrl, userName, password)
     println("\n2) Primarily Delete")
     Generator.generate()
+    fillIdLists()
     println("===without cache===")
-    test(withoutCache, 1, 2, 100)
+    test(withoutCache, 0, 0, 100)
 
     Generator.generate()
+    fillIdLists()
     println("\n===cache = ${smallCache.capacity}===")
-    test(smallCache, 1, 2, 100)
+    test(smallCache, 0, 0, 100)
 
     Generator.generate()
+    fillIdLists()
     println("\n===cache = ${bigCache.capacity}===")
-    test(bigCache, 1, 2, 100)
+    test(bigCache, 0, 0, 100)
     println("-------------------------------")
     bigCache.close()
     smallCache.close()
@@ -103,26 +88,26 @@ fun main() {
 }
 
 fun test(dao: DAO, select: Int, update: Int, delete: Int) {
-    val list = listOf(select, update, delete).sorted()
+    val list = listOf(select to 's', update to 'u', delete to 'd').sortedBy { it.first }
 
     val times = mutableListOf<Long>()
 
-    fun addTime(action: Int) {
+    fun addTime(action: Char) {
         when (action) {
-            select -> times += select(dao)
-            update -> times += update(dao)
-            delete -> times += delete(dao)
+            's' -> times += select(dao)
+            'u' -> times += update(dao)
+            'd' -> times += delete(dao)
         }
     }
 
     for (i in 1..iterations) {
-        val operation = Math.random() * list.sum()
-        if (operation < list[0]) {
-            addTime(list[0])
-        } else if (operation < list[0] + list[1]) {
-            addTime(list[1])
+        val operation = Math.random() * list.sumOf { it.first }
+        if (operation < list[0].first) {
+            addTime(list[0].second)
+        } else if (operation < list[0].first + list[1].first) {
+            addTime(list[1].second)
         } else {
-            addTime(list[2])
+            addTime(list[2].second)
         }
     }
 
@@ -181,6 +166,29 @@ fun delete(dao: DAO): Long {
     printTableSizes()
     return (System.nanoTime() - start)
 
+}
+
+fun fillIdLists() {
+    moviesIds.apply {
+        clear()
+        val rs = statement.executeQuery("select id from movies")
+        while (rs.next())
+            add(rs.getInt("id"))
+    }
+
+    actorIds.apply {
+        clear()
+        val rs = statement.executeQuery("select id from personalities")
+        while (rs.next())
+            add(rs.getInt("id"))
+    }
+
+    userIds.apply {
+        clear()
+        val rs = statement.executeQuery("select id from users")
+        while (rs.next())
+            add(rs.getInt("id"))
+    }
 }
 
 
