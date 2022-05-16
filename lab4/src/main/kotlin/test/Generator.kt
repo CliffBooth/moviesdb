@@ -1,68 +1,53 @@
+package test
+
 import org.postgresql.util.PSQLException
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.Statement
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 
-const val jdbcUrl = "jdbc:postgresql://localhost:5432/movies_db"
-const val userName = "postgres"
-const val password = "1"
+object Generator {
+    private const val firstNameFile = "names.txt"
+    private const val secondNameFile = "secondNames.txt"
+    private const val titlesFile = "movie_titles.txt"
 
-const val firstNameFile = "names.txt"
-const val secondNameFile = "secondNames.txt"
-const val titlesFile = "movie_titles.txt"
+    private val firstNames = HashSet<String>().apply {
+        Generator.javaClass.classLoader.getResourceAsStream(firstNameFile)!!.bufferedReader().useLines { addAll(it) }
+    }
 
-val firstNames = HashSet<String>().apply {
-    Adder::class.java.getResourceAsStream(firstNameFile)!!.bufferedReader().useLines { addAll(it) }
-}
+    private val secondNames = HashSet<String>().apply {
+        Generator.javaClass.classLoader.getResourceAsStream(secondNameFile)!!.bufferedReader().useLines { addAll(it) }
+    }
 
-val secondNames = HashSet<String>().apply {
-    Adder::class.java.getResourceAsStream(secondNameFile)!!.bufferedReader().useLines { addAll(it) }
-}
+    private val titles = HashSet<String>().apply {
+        Generator.javaClass.classLoader.getResourceAsStream(titlesFile)!!.bufferedReader().useLines { addAll(it) }
+    }
 
-val titles = HashSet<String>().apply {
-    Adder::class.java.getResourceAsStream(titlesFile)!!.bufferedReader().useLines { addAll(it) }
-}
-
-const val entriesNumber = 1_000
-
-val c: Connection = DriverManager.getConnection(jdbcUrl, userName, password)
-val statement: Statement = c.createStatement()
-
-fun main() {
-    Adder.clearTable()
-    Adder.addUsers(entriesNumber)
-    println("users")
-
-    Adder.addPersonalities(entriesNumber)
-    println("personalities")
-
-    Adder.addMovies(entriesNumber)
-    println("movies")
-
-    Adder.addPersonalityToMovie(entriesNumber, "director_to_movie")
-    println("director")
-    Adder.addPersonalityToMovie(entriesNumber, "actor_to_movie")
-    println("actor")
-    Adder.addPersonalityToMovie(entriesNumber, "screenwriter_to_movie")
-    println("screenwriter")
-
-    Adder.addRating(entriesNumber)
-    println("rating")
-
-    Adder.addReviews(entriesNumber)
-    println("review")
-
-    Adder.addMovieLists(entriesNumber)
-    println("movieList")
-
-    Adder.addMovieToLists(entriesNumber)
-    println("movie to list")
-}
-
-object Adder {
+    fun generate() {
+        clearTable()
+        val sb = StringBuilder("generating database... ")
+        val l = sb.length + 10
+        print(sb.toString().padEnd(l) + "|\r")
+        addUsers(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addPersonalities(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addMovies(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addPersonalityToMovie(DBSize, "director_to_movie")
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addPersonalityToMovie(DBSize, "actor_to_movie")
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addPersonalityToMovie(DBSize, "screenwriter_to_movie")
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addRating(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addReviews(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addMovieLists(DBSize)
+        print(sb.append("#").toString().padEnd(l) + "|\r")
+        addMovieToLists(DBSize)
+        println(sb.append("#|").toString())
+    }
 
     private fun getIds(table: String) = HashSet<Int>().apply {
         val rs = statement.executeQuery("SELECT id FROM $table")
@@ -87,7 +72,7 @@ object Adder {
         }
 
     private fun getRandomString(maxLength: Int, whiteSpace: Boolean = true): String {
-        val charPool = "q,w,e,r,t,y,u,i,o,p,a,s,d,f,g,h,j,k,l,z,x,c,v,b,n,m, "
+        val charPool = "q,w,e,r,t,y,u,i,o,p,a,s,d,f,g,h,j,k,l,z,x,test.getC,v,b,n,m, "
             .split(",")
             .dropLastWhile { !whiteSpace && it == " " }
         val length = (1..maxLength).random()
@@ -95,7 +80,7 @@ object Adder {
             .map { Random.nextInt(0, charPool.size) }.joinToString("", transform = charPool::get)
     }
 
-    fun addUsers(number: Int) {
+    private fun addUsers(number: Int) {
         var i = 0
         while (i < number) {
             i++
@@ -109,7 +94,7 @@ object Adder {
         }
     }
 
-    fun addPersonalities(number: Int) {
+    private fun addPersonalities(number: Int) {
         repeat(number) {
             val name = "${firstNames.random()} ${secondNames.random()}"
             val dayOffset = (0..ChronoUnit.DAYS.between(
@@ -122,7 +107,7 @@ object Adder {
         }
     }
 
-    fun addMovies(number: Int) {
+    private fun addMovies(number: Int) {
         repeat(number) {
             val dayOffset = (0..ChronoUnit.DAYS.between(
                 LocalDate.of(1940, 1, 1),
@@ -135,7 +120,7 @@ object Adder {
         }
     }
 
-    fun addPersonalityToMovie(number: Int, table: String) {
+    private fun addPersonalityToMovie(number: Int, table: String) {
         val existingPairs = mutableSetOf<Pair<Int, Int>>()
         val rs = statement.executeQuery("SELECT * FROM $table")
         while (rs.next()) {
@@ -147,7 +132,7 @@ object Adder {
             statement.execute("INSERT INTO $table(personality_id, movie_id) VALUES('$personalityId','$movieId')")
     }
 
-    fun addRating(number: Int) {
+    private fun addRating(number: Int) {
         val existingPairs = mutableSetOf<Pair<Int, Int>>()
         val rs = statement.executeQuery("SELECT * FROM rating")
         while (rs.next()) {
@@ -161,7 +146,7 @@ object Adder {
         }
     }
 
-    fun addReviews(number: Int) {
+    private fun addReviews(number: Int) {
         val existingPairs = mutableSetOf<Pair<Int, Int>>()
         val rs = statement.executeQuery("SELECT * FROM review")
         while (rs.next()) {
@@ -175,7 +160,7 @@ object Adder {
         }
     }
 
-    fun addMovieLists(number: Int) {
+    private fun addMovieLists(number: Int) {
         val userIds = getIds("users")
         repeat(number) {
             val name = getRandomString(15)
@@ -184,7 +169,7 @@ object Adder {
         }
     }
 
-    fun addMovieToLists(number: Int) {
+    private fun addMovieToLists(number: Int) {
         val existingPairs = mutableSetOf<Pair<Int, Int>>()
         val rs = statement.executeQuery("SELECT * FROM movie_to_list")
         while (rs.next()) {
@@ -197,7 +182,7 @@ object Adder {
     }
 
 
-    fun clearTable() {
+    private fun clearTable() {
         val tables = listOf(
             "movies",
             "personalities",
