@@ -26,7 +26,7 @@ fun main() {
     fillIdLists()
 
     val cacheSize = DBSize * 2
-    val smallCacheSize = DBSize * 1
+    val smallCacheSize = (DBSize * .2).toInt()
 
     //primarily select
     var bigCache = WithCache(jdbcUrl, userName, password, cacheSize)
@@ -116,53 +116,44 @@ fun test(dao: DAO, select: Int, update: Int, delete: Int) {
 }
 
 fun select(dao: DAO): Long {
-    val r = Math.random()
-
     val start = System.nanoTime()
-    if (r < 1.0 / 3) {
-        dao.getUsersByMovieId(moviesIds.random())
-    } else if (r < 2.0 / 3) {
-        dao.getActorsByMovieId(moviesIds.random())
-    } else {
-        dao.getMoviesByActorId(actorIds.random())
+    when (listOf(1, 2, 3).random()){
+        1 -> dao.getUsersByMovieId(moviesIds.random())
+        2 -> dao.getActorsByMovieId(moviesIds.random())
+        3 -> dao.getMoviesByActorId(actorIds.random())
     }
-
     return (System.nanoTime() - start)
 }
 
 fun update(dao: DAO): Long {
-    val r = Math.random()
-
     val start = System.nanoTime()
-    if (r < 1.0 / 3) {
-        dao.updateMovies(moviesIds.random())
-    } else if (r < 2.0 / 3) {
-        dao.updateUsers(userIds.random())
-    } else {
-        dao.updateActors(actorIds.random())
+    when (listOf(1, 2, 3).random()){
+        1 -> dao.updateMovies(moviesIds.random())
+        2 -> dao.updateUsers(userIds.random())
+        3 -> dao.updateActors(actorIds.random())
     }
-
     return (System.nanoTime() - start)
 }
 
 fun delete(dao: DAO): Long {
-    val r = Math.random()
-
     val start = System.nanoTime()
-    if (r < 1.0 / 3) {
-        val id = moviesIds.random()
-        moviesIds.remove(id)
-        dao.deleteMovie(id)
-    } else if (r < 2.0 / 3) {
-        val id = userIds.random()
-        userIds.remove(id)
-        dao.deleteUser(id)
-    } else {
-        val id = actorIds.random()
-        actorIds.remove(id)
-        dao.deleteActor(id)
+    when (listOf(1, 2, 3).random()){
+        1 -> {
+            val id = moviesIds.random()
+            moviesIds.remove(id)
+            dao.deleteMovie(id)
+        }
+        2 -> {
+            val id = userIds.random()
+            userIds.remove(id)
+            dao.deleteUser(id)
+        }
+        3 -> {
+            val id = actorIds.random()
+            actorIds.remove(id)
+            dao.deleteActor(id)
+        }
     }
-
     printTableSizes()
     return (System.nanoTime() - start)
 

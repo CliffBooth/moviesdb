@@ -10,13 +10,14 @@ class WithoutCache(
     password: String,
 ): DAO() {
     override val c: Connection = DriverManager.getConnection(jdbcUrl, userName, password)
-    private val statement: Statement = c.createStatement()
 
     private fun get(query: String): List<String> {
+        val statement: Statement = c.createStatement()
         val result = mutableListOf<String>()
         val rs = statement.executeQuery(query)
         while (rs.next())
             result += rs.getString(1)
+        statement.close()
         return result
     }
 
@@ -48,7 +49,7 @@ class WithoutCache(
             where movies.id=$id
         """.trimIndent()
         return get(query)
-        statement.execute(query)
+        execute(query)
     }
 
     override fun updateUsers(id: Int) {
@@ -57,16 +58,16 @@ class WithoutCache(
             set username = 'changed username'
             where id=$id
         """.trimIndent()
-        statement.execute(query)
+        execute(query)
     }
 
-    override fun updateMovies(id: Int) {
+    @Synchronized override fun updateMovies(id: Int) {
         val query = """
             update movies 
             set title = 'changed title'
             where id=$id
         """.trimIndent()
-        statement.execute(query)
+        execute(query)
     }
 
     override fun updateActors(id: Int) {
@@ -75,21 +76,27 @@ class WithoutCache(
             set name = 'changed name'
             where id=$id
         """.trimIndent()
-        statement.execute(query)
+        execute(query)
     }
 
     override fun deleteUser(id: Int) {
         val query = "delete from users where id=$id"
-        statement.execute(query)
+        execute(query)
     }
 
     override fun deleteMovie(id: Int) {
         val query = "delete from movies where id=$id"
-        statement.execute(query)
+        execute(query)
     }
 
     override fun deleteActor(id: Int) {
         val query = "delete from personalities where id=$id"
+        execute(query)
+    }
+
+    fun execute(query: String) {
+        val statement: Statement = c.createStatement()
         statement.execute(query)
+        statement.close()
     }
 }
