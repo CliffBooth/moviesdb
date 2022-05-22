@@ -49,7 +49,6 @@ class WithoutCache(
             where movies.id=$id
         """.trimIndent()
         return get(query)
-        execute(query)
     }
 
     override fun updateUsers(id: Int) {
@@ -61,7 +60,7 @@ class WithoutCache(
         execute(query)
     }
 
-    @Synchronized override fun updateMovies(id: Int) {
+    override fun updateMovies(id: Int) {
         val query = """
             update movies 
             set title = 'changed title'
@@ -94,7 +93,7 @@ class WithoutCache(
         execute(query)
     }
 
-    fun execute(query: String) {
+    @Synchronized private fun execute(query: String) {
         val statement: Statement = c.createStatement()
         statement.execute(query)
         statement.close()
